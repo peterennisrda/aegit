@@ -39,8 +39,8 @@ Private Const EXCLUDE_1 As String = "aebasChangeLog_aegit_expClass"
 Private Const EXCLUDE_2 As String = "aebasTEST_aegit_expClass"
 Private Const EXCLUDE_3 As String = "aegit_expClass"
 
-Private Const aegit_expVERSION As String = "1.9.909"
-Private Const aegit_expVERSION_DATE As String = "November 26, 2016"
+Private Const aegit_expVERSION As String = "2.1.5"
+Private Const aegit_expVERSION_DATE As String = "April 2, 2018"
 'Private Const aeAPP_NAME As String = "aegit_exp"
 Private Const mblnOutputPrinterInfo As Boolean = False
 ' If mblnUTF16 is True the form txt exported files will be UTF-16 Windows format
@@ -74,20 +74,21 @@ Private Type mySetupType
     UseImportFolder As Boolean
 End Type
 
-Private Type myExportType                   ' Initialize defaults as:
-    ExportAll As Boolean                    ' True
-    ExportCodeAndObjects As Boolean         ' True
-    ExportModuleCodeOnly As Boolean         ' True
-    ExportQAT As Boolean                    ' False
-    ExportCBID As Boolean                   ' False
-    ExportNoODBCTablesInfo As Boolean       ' True, default does not export info about ODBC linked tables
-    ExportCreateDbScript As Boolean         ' False,
+Private Type myExportType                           ' Initialize defaults as:
+    ExportAll As Boolean                            ' True
+    ExportCodeAndObjects As Boolean                 ' True
+    'OBSOLETE ExportModuleCodeOnly As Boolean                 ' True
+    EXPERIMENTAL_ExportQAT As Boolean               ' False
+    EXPERIMENTAL_ExportCBID As Boolean              ' False
+    ExportNoODBCTablesInfo As Boolean               ' True, default does not export info about ODBC linked tables
+    EXPERIMENTAL_ExportCreateDbScript As Boolean    ' False,
 End Type
 
 Private myExclude As myExclusions
 Private pExclude As Boolean
 Private mblnIgnore As Boolean
 Private mblnResult As Boolean
+Private mstrTheSourceLocation As String
 
 Private aegitSetup As Boolean
 Private aegitType As mySetupType
@@ -119,7 +120,8 @@ Private aestrLFD As String
 Private aestrBackEndDbOne As String
 Private aeListOfTables() As Variant
 '
-Private Const DebugPrintInitialize As Boolean = False
+Private Const DebugPrintInitialize As Boolean = True
+'
 'Private aestrPassword As String
 Private Const aestr4 As String = "    "
 Private Const aeAppCmbrIds As String = "OutputListOfCommandBarIDs.txt"
@@ -166,7 +168,7 @@ Private Sub Class_Initialize()
     ' Ref: http://stackoverflow.com/questions/1731052/is-there-a-way-to-overload-the-constructor-initialize-procedure-for-a-class-in
 
     On Error GoTo PROC_ERR
-    
+
     With aeLog
         .blnNoEnd = False
         .blnNoPrint = False
@@ -191,18 +193,21 @@ Private Sub Class_Initialize()
     aegitXMLFolderBe = "default"
     aegitXMLDataFolder = "default"
     aegitXMLDataFolderBe = "default"
-    aestrBackEndDbOne = "default"             ' default for aegit is no back end database
+    aestrBackEndDbOne = "default"           ' Default for aegit is no back end database
+    aegitFrontEndApp = True                 ' Default is a front end app
+    pExclude = False                        ' Default setting is to export associated aegit_exp files
+    '
     ReDim Preserve aegitDataXML(0 To 0)
     If Application.VBE.ActiveVBProject.Name = "aegit" Then
         aegitDataXML(0) = "aetlkpStates"
     End If
     aegitExportDataToXML = True
-    aegitType.SourceFolder = "C:\ae\aegit\aerc\src\"
-    aegitType.SourceFolderBe = "C:\ae\aegit\aerc\srcbe\"
-    aegitType.XMLFolder = "C:\ae\aegit\aerc\src\xml\"
-    aegitType.XMLFolderBe = "C:\ae\aegit\aerc\srcbe\xml\"
-    aegitType.XMLDataFolder = "C:\ae\aegit\aerc\src\xmldata\"
-    aegitType.XMLDataFolderBe = "C:\ae\aegit\aerc\srcbe\xmldata\"
+    aegitType.SourceFolder = "C:\ae\adaept.com\aegit\aerc\src\"
+    aegitType.SourceFolderBe = "C:\ae\adaept.com\aegit\aerc\srcbe\"
+    aegitType.XMLFolder = "C:\ae\adaept.com\aegit\aerc\src\xml\"
+    aegitType.XMLFolderBe = "C:\ae\adaept.com\aegit\aerc\srcbe\xml\"
+    aegitType.XMLDataFolder = "C:\ae\adaept.com\aegit\aerc\src\xmldata\"
+    aegitType.XMLDataFolderBe = "C:\ae\adaept.com\aegit\aerc\srcbe\xmldata\"
 
     Const aeintLTN As Integer = 11           ' Set a minimum default
     aeintFNLen = 4          ' Set a minimum default
@@ -212,14 +217,11 @@ Private Sub Class_Initialize()
     With aegitExport
         .ExportAll = True
         .ExportCodeAndObjects = True
-        .ExportModuleCodeOnly = True
-        .ExportQAT = False
-        .ExportCBID = False
+        'OBSOLETE .ExportModuleCodeOnly = True
+        .EXPERIMENTAL_ExportQAT = False
+        .EXPERIMENTAL_ExportCBID = False
         .ExportNoODBCTablesInfo = True
     End With
-
-    pExclude = True             ' Default setting is not to export associated aegit_exp files
-    aegitFrontEndApp = True     ' Default is a front end app
 
     Debug.Print "Class_Initialize"
     If DebugPrintInitialize Then
@@ -248,9 +250,9 @@ Private Sub Class_Initialize()
         '
         Debug.Print , "aegitExport.ExportAll = " & aegitExport.ExportAll
         Debug.Print , "aegitExport.ExportCodeAndObjects = " & aegitExport.ExportCodeAndObjects
-        Debug.Print , "aegitExport.ExportCodeOnly = " & aegitExport.ExportModuleCodeOnly
-        Debug.Print , "aegitExport.ExportQAT = " & aegitExport.ExportQAT
-        Debug.Print , "aegitExport.ExportCBID = " & aegitExport.ExportCBID
+        'OBSOLETE Debug.Print , "aegitExport.ExportCodeOnly = " & aegitExport.ExportModuleCodeOnly
+        Debug.Print , "aegitExport.EXPERIMENTAL_ExportQAT = " & aegitExport.EXPERIMENTAL_ExportQAT
+        Debug.Print , "aegitExport.EXPERIMENTAL_ExportCBID = " & aegitExport.EXPERIMENTAL_ExportCBID
         Debug.Print , "aegitExport.ExportNoODBCTablesInfo = " & aegitExport.ExportNoODBCTablesInfo
         DefineMyExclusions
         Debug.Print , "pExclude = " & pExclude
@@ -459,13 +461,13 @@ Public Property Get Exists(ByVal strAccObjType As String, _
     End If
 End Property
 
-Public Property Let ExportCBID(ByVal IsExportCBID As Boolean)
+Public Property Let EXPERIMENTAL_ExportCBID(ByVal IsEXPERIMENTAL_ExportCBID As Boolean)
     On Error GoTo 0
-    Debug.Print "Property Let ExportCBID"
-    If IsExportCBID Then
-        aegitExport.ExportCBID = True
+    Debug.Print "Property Let EXPERIMENTAL_ExportCBID"
+    If IsEXPERIMENTAL_ExportCBID Then
+        aegitExport.EXPERIMENTAL_ExportCBID = True
     Else
-        aegitExport.ExportCBID = False
+        aegitExport.EXPERIMENTAL_ExportCBID = False
     End If
 End Property
 
@@ -479,13 +481,13 @@ Public Property Let ExportNoODBCTablesInfo(ByVal ExportNoODBCTablesInfo As Boole
     End If
 End Property
 
-Public Property Let ExportQAT(ByVal IsExportQAT As Boolean)
+Public Property Let EXPERIMENTAL_ExportQAT(ByVal IsEXPERIMENTAL_ExportQAT As Boolean)
     On Error GoTo 0
-    Debug.Print "Property Let ExportQAT"
-    If IsExportQAT Then
-        aegitExport.ExportQAT = True
+    Debug.Print "Property Let EXPERIMENTAL_ExportQAT"
+    If IsEXPERIMENTAL_ExportQAT Then
+        aegitExport.EXPERIMENTAL_ExportQAT = True
     Else
-        aegitExport.ExportQAT = False
+        aegitExport.EXPERIMENTAL_ExportQAT = False
     End If
 End Property
 
@@ -544,13 +546,13 @@ Public Property Get SchemaFile(Optional ByVal varDebug As Variant) As Boolean
     SchemaFile = True
 End Property
 
-Public Property Let ExportSchemaFile(ByVal IsExportSchema As Boolean)
+Public Property Let EXPERIMENTAL_ExportCreateDbScript(ByVal IsEXPERIMENTAL_ExportCreateDbScript As Boolean)
     On Error GoTo 0
-    Debug.Print "Property Let ExportSchemaFile"
-    If IsExportSchema Then
-        aegitExport.ExportCreateDbScript = True
+    Debug.Print "Property Let EXPERIMENTAL_ExportCreateDbScript"
+    If IsEXPERIMENTAL_ExportCreateDbScript Then
+        aegitExport.EXPERIMENTAL_ExportCreateDbScript = True
     Else
-        aegitExport.ExportCreateDbScript = False
+        aegitExport.EXPERIMENTAL_ExportCreateDbScript = False
     End If
 End Property
 
@@ -566,13 +568,14 @@ Public Property Let SourceFolder(ByVal strSourceFolder As String)
     On Error GoTo 0
     Debug.Print "Property Let SourceFolder"
     aegitSourceFolder = strSourceFolder
+    Debug.Print , "aegitSourceFolder = " & aegitSourceFolder
 End Property
 
 Public Property Get SourceFolderBe() As String
     On Error GoTo 0
     Debug.Print "Property Get SourceFolderBe"
     SourceFolderBe = aegitSourceFolderBe      'aestrSourceLocationBe
-    'Debug.Print , "SourceFolderBe = " & SourceFolderBe
+    Debug.Print , "SourceFolderBe = " & SourceFolderBe
 End Property
 
 Public Property Let SourceFolderBe(ByVal strSourceFolderBe As String)
@@ -580,7 +583,7 @@ Public Property Let SourceFolderBe(ByVal strSourceFolderBe As String)
     Debug.Print "Property Let SourceFolderBe"
     aegitSourceFolderBe = strSourceFolderBe
     'aestrSourceLocationBe = strSourceFolderBe
-    'Debug.Print , "aestrSourceLocationBe = " & aestrSourceLocationBe
+    Debug.Print , "aestrSourceLocationBe = " & aestrSourceLocationBe
 End Property
 
 Public Property Let TablesExportToXML(ByVal varTablesArray As Variant)
@@ -634,7 +637,7 @@ Public Property Let XMLDataFolder(ByVal strXMLDataFolder As String)
     On Error GoTo 0
     Debug.Print "Property Let XMLDataFolder"
     aegitXMLDataFolder = strXMLDataFolder
-    'Debug.Print , "aegitXMLDataFolder = " & aegitXMLDataFolder
+    Debug.Print , "aegitXMLDataFolder = " & aegitXMLDataFolder
 End Property
 
 Public Property Get XMLDataFolderBe() As String
@@ -648,7 +651,7 @@ Public Property Let XMLDataFolderBe(ByVal strXMLDataFolderBe As String)
     On Error GoTo 0
     Debug.Print "Property Let XMLDataFolderBe"
     aegitXMLDataFolderBe = strXMLDataFolderBe
-    'Debug.Print , "aegitXMLDataFolderBe = " & aegitXMLDataFolderBe
+    Debug.Print , "aegitXMLDataFolderBe = " & aegitXMLDataFolderBe
 End Property
 
 Public Property Get XMLFolder() As String
@@ -662,7 +665,7 @@ Public Property Let XMLFolder(ByVal strXMLFolder As String)
     On Error GoTo 0
     Debug.Print "Property Let XMLFolder"
     aegitXMLFolder = strXMLFolder
-    'Debug.Print , "aegitXMLFolder = " & aegitXMLFolder
+    Debug.Print , "aegitXMLFolder = " & aegitXMLFolder
 End Property
 
 Public Property Get XMLFolderBe() As String
@@ -676,8 +679,28 @@ Public Property Let XMLFolderBe(ByVal strXMLFolderBe As String)
     On Error GoTo 0
     Debug.Print "Property Let XMLFolderBe"
     aegitXMLFolderBe = strXMLFolderBe
-    'Debug.Print , "aegitXMLFolderBe = " & aegitXMLFolderBe
+    Debug.Print , "aegitXMLFolderBe = " & aegitXMLFolderBe
 End Property
+
+Private Sub aeHideTable(strTableName As String)
+    With CurrentDb
+        With .TableDefs(strTableName)
+            .Attributes = .Attributes Or dbHiddenObject
+        End With
+    End With
+    RefreshDatabaseWindow
+End Sub
+
+Public Sub aeUnHideTable(strTableName As String)
+    With CurrentDb
+        With .TableDefs(strTableName)
+            If dbHiddenObject = (.Attributes And dbHiddenObject) Then
+                .Attributes = .Attributes - dbHiddenObject
+            End If
+        End With
+    End With
+    RefreshDatabaseWindow
+End Sub
 
 Private Sub aeBeginLogging(ByVal strProcName As String, Optional ByVal varOne As Variant = vbNullString, _
     Optional ByVal varTwo As Variant = vbNullString, Optional ByVal varThree As Variant = vbNullString)
@@ -773,7 +796,7 @@ Private Function aeDocumentTables(Optional ByVal varDebug As Variant) As Boolean
     ' Ref: http://www.tek-tips.com/faqs.cfm?fid=6905
     ' Ref: http://allenbrowne.com/func-06.html
     ' Document the tables, fields, and relationships
-    ' Tables, field type, primary keys, foreign keys, indexes
+    ' Tables, field Type, primary keys, foreign keys, indexes
     ' Relationships in the database with table, foreign table, primary keys, foreign keys
 
     Dim tdf As DAO.TableDef
@@ -873,15 +896,6 @@ Private Function aeDocumentTablesXML(Optional ByVal varDebug As Variant) As Bool
 
     Dim intFailCount As Integer
 
-    Dim strTheSourceLocation As String
-    If aegitSourceFolder = "default" Then
-        strTheSourceLocation = aegitType.SourceFolder
-    ElseIf aegitFrontEndApp Then
-        strTheSourceLocation = aestrSourceLocation
-    ElseIf Not aegitFrontEndApp Then
-        strTheSourceLocation = aestrSourceLocationBe
-    End If
-
     Dim strTheXMLLocation As String
     If aegitXMLFolder = "default" Then
         strTheXMLLocation = aegitType.XMLFolder
@@ -920,7 +934,7 @@ Private Function aeDocumentTablesXML(Optional ByVal varDebug As Variant) As Bool
     If Not IsMissing(varDebug) Then Debug.Print ">List of tables exported as XML to " & strTheXMLLocation
     If Not aegitExport.ExportNoODBCTablesInfo Then
         For Each tbl In dbs.TableDefs
-            If Not IsLinkedTable(tbl.Name) And Not (tbl.Name Like "MSys*") Then
+            If Not IsLinkedTable(tbl.Name) And Not (tbl.Name Like "MSys*") And Not Left$(tbl.Name, 4) = "~TMP" Then
                 strObjName = tbl.Name
                 Application.ExportXML acExportTable, strObjName, , _
                     strTheXMLLocation & "tables_" & strObjName & ".xsd"
@@ -937,7 +951,7 @@ Private Function aeDocumentTablesXML(Optional ByVal varDebug As Variant) As Bool
             If IsLinkedODBC(tbl.Name) Then
                 ' Do nothing
             Else
-                If Not IsLinkedTable(tbl.Name) And Not (tbl.Name Like "MSys*") Then
+                If Not IsLinkedTable(tbl.Name) And Not (tbl.Name Like "MSys*") And Not Left$(tbl.Name, 4) = "~TMP" Then
                     strObjName = tbl.Name
                     Application.ExportXML acExportTable, strObjName, , _
                         strTheXMLLocation & "tables_" & strObjName & ".xsd"
@@ -983,106 +997,24 @@ PROC_ERR:
 
 End Function
 
-Private Function aeDocumentTheDatabase(Optional ByVal varDebug As Variant) As Boolean
-    ' Based on sample code from Arvin Meyer (MVP) June 2, 1999
-    ' Ref: http://www.accessmvp.com/Arvin/DocDatabase.txt
-    ' Ref: http://www.tek-tips.com/faqs.cfm?fid=6905
-    '=======================================================================
-    ' Author:   Peter F. Ennis
-    ' Date:     February 8, 2011
-    ' Comment:  Uses the undocumented [Application.SaveAsText] syntax
-    '           To reload use the syntax [Application.LoadFromText]
-    '           Add explicit references for DAO
-    ' Updated:  All notes moved to change log
-    ' History:  See comment details, basChangeLog, commit messages on github
-    '=======================================================================
+Private Sub Setup_The_Source_Location()
+    If aegitSourceFolder = "default" Then
+        mstrTheSourceLocation = aegitType.SourceFolder
+    ElseIf aegitFrontEndApp Then
+        mstrTheSourceLocation = aestrSourceLocation
+    ElseIf Not aegitFrontEndApp Then
+        mstrTheSourceLocation = aestrSourceLocationBe
+    End If
+End Sub
 
-    Dim cnt As DAO.Container
-    Dim doc As DAO.Document
+Private Function DocumentTheQueries(Optional ByVal varDebug As Variant) As Boolean
+
+    On Error GoTo PROC_ERR
+
     Dim qdf As DAO.QueryDef
     Dim i As Integer
     Dim strqdfName As String
 
-    On Error GoTo PROC_ERR
-    'aeBeginLogging "aeDocumentTheDatabase"
-
-    If IsMissing(varDebug) Then
-        'Debug.Print , "varDebug IS missing so no parameter is passed to aeDocumentTheDatabase"
-        'Debug.Print , "DEBUGGING IS OFF"
-        VerifySetup
-    Else
-        Debug.Print , "varDebug IS NOT missing so a variant parameter is passed to aeDocumentTheDatabase"
-        Debug.Print , "DEBUGGING TURNED ON"
-        VerifySetup ''' "varDebug"
-    End If
-
-    ListOrCloseAllOpenQueries
-
-    ' ===================================
-    '    FORMS REPORTS SCRIPTS MODULES
-    ' ===================================
-    ' NOTE: Erl(0) Error 2950 if the ouput location does not exist so test for it first: Resolved in VerifySetup
-
-    Debug.Print "aeDocumentTheDatabase", "aegitSetup = " & aegitSetup, "aegitFrontEndApp = " & aegitFrontEndApp
-    'Stop
-    
-    Dim strTheSourceLocation As String
-    If aegitSourceFolder = "default" Then
-        strTheSourceLocation = aegitType.SourceFolder
-    ElseIf aegitFrontEndApp Then
-        strTheSourceLocation = aestrSourceLocation
-    ElseIf Not aegitFrontEndApp Then
-        strTheSourceLocation = aestrSourceLocationBe
-    End If
-
-    aeBeginLogging "aeDocumentTheDatabase"
-    If aegitSetup Then
-        KillAllFiles aestrSourceLocation            '= aegitType.SourceFolder
-        KillAllFiles aestrXMLLocation               '= aegitType.XMLFolder
-        KillAllFiles aestrXMLDataLocation           '= aegitType.XMLDataFolder
-    ElseIf aegitFrontEndApp Then
-        KillAllFiles aestrSourceLocation
-        KillAllFiles aestrXMLLocation
-        KillAllFiles aestrXMLDataLocation
-    ElseIf Not aegitFrontEndApp Then
-        KillAllFiles aestrSourceLocationBe
-        KillAllFiles aestrXMLLocationBe
-        KillAllFiles aestrXMLDataLocationBe
-    End If
-    aePrintLog "Timing for KillAllFiles"
-    aeEndLogging "aeDocumentTheDatabase"
-
-    If Not IsMissing(varDebug) Then
-        DocumentTheContainer "Forms", "frm", varDebug
-        DocumentTheContainer "Reports", "rpt", varDebug
-        DocumentTheContainer "Scripts", "mac", varDebug
-        DocumentTheContainer "Modules", "bas", varDebug
-    Else
-        aeBeginLogging "aeDocumentTheDatabase"
-        DocumentTheContainer "Forms", "frm"
-        aePrintLog "Timing for DocumentTheContainer Forms"
-        aeEndLogging "aeDocumentTheDatabase"
-
-        aeBeginLogging "aeDocumentTheDatabase"
-        DocumentTheContainer "Reports", "rpt"
-        aePrintLog "Timing for DocumentTheContainer Reports"
-        aeEndLogging "aeDocumentTheDatabase"
-
-        aeBeginLogging "aeDocumentTheDatabase"
-        DocumentTheContainer "Scripts", "mac"
-        aePrintLog "Timing for DocumentTheContainer Macros"
-        aeEndLogging "aeDocumentTheDatabase"
-
-        aeBeginLogging "aeDocumentTheDatabase"
-        DocumentTheContainer "Modules", "bas"
-        aePrintLog "Timing for DocumentTheContainer Modules"
-        aeEndLogging "aeDocumentTheDatabase"
-    End If
-
-    ' =============
-    '    QUERIES
-    ' =============
-    aeBeginLogging "aeDocumentTheDatabase"
     i = 0
     If Not IsMissing(varDebug) Then Debug.Print "QUERIES"
 
@@ -1104,11 +1036,11 @@ Private Function aeDocumentTheDatabase(Optional ByVal varDebug As Variant) As Bo
             Or Left$(strqdfName, 4) = "~TMP" _
             Or Left$(strqdfName, 3) = "zzz") Then
             i = i + 1
-            Application.SaveAsText acQuery, strqdfName, strTheSourceLocation & strqdfName & ".qry"
+            Application.SaveAsText acQuery, strqdfName, mstrTheSourceLocation & strqdfName & ".qry"
             ' Convert UTF-16 to txt - fix for Access 2013+
-            If aeReadWriteStream(strTheSourceLocation & strqdfName & ".qry") = True Then
-                KillProperly (strTheSourceLocation & strqdfName & ".qry")
-                Name strTheSourceLocation & strqdfName & ".qry" & ".clean.txt" As strTheSourceLocation & strqdfName & ".qry"
+            If aeReadWriteStream(mstrTheSourceLocation & strqdfName & ".qry") = True Then
+                KillProperly (mstrTheSourceLocation & strqdfName & ".qry")
+                Name mstrTheSourceLocation & strqdfName & ".qry" & ".clean.txt" As mstrTheSourceLocation & strqdfName & ".qry"
             End If
         End If
     Next qdf
@@ -1126,20 +1058,158 @@ Private Function aeDocumentTheDatabase(Optional ByVal varDebug As Variant) As Bo
             Debug.Print , CurrentDb.QueryDefs.Count & " Queries EXISTING!"
         End If
     End If
-    aePrintLog "Timing for DocumentTheContainer Queries"
-    aeEndLogging "aeDocumentTheDatabase"
+    
+    DocumentTheQueries = True
+
+PROC_EXIT:
+    Set qdf = Nothing
+    Exit Function
+
+PROC_ERR:
+    MsgBox "Erl=" & Erl & " Error " & Err.Number & " (" & Err.Description & ") in procedure DocumentTheQueries of Class aegit_expClass", vbCritical, "ERROR"
+    'If Not IsMissing(varDebug) Then Debug.Print ">>>Erl=" & Erl & " Error " & Err.Number & " (" & Err.Description & ") in procedure DocumentTheQueries of Class aegit_expClass"
+    DocumentTheQueries = False
+    Resume PROC_EXIT
+
+End Function
+
+Private Function aeDocumentTheDatabase(Optional ByVal varDebug As Variant) As Boolean
+    ' Based on sample code from Arvin Meyer (MVP) June 2, 1999
+    ' Ref: http://www.accessmvp.com/Arvin/DocDatabase.txt
+    ' Ref: http://www.tek-tips.com/faqs.cfm?fid=6905
+    '=======================================================================
+    ' Author:   Peter F. Ennis
+    ' Date:     February 8, 2011
+    ' Comment:  Uses the undocumented [Application.SaveAsText] syntax
+    '           To reload use the syntax [Application.LoadFromText]
+    '           Add explicit references for DAO
+    ' Updated:  All notes moved to change log
+    ' History:  See comment details, basChangeLog, commit messages on github
+    '=======================================================================
+
+    Dim cnt As DAO.Container
+    Dim doc As DAO.Document
+
+    On Error GoTo PROC_ERR
+
+    If IsMissing(varDebug) Then
+        'Debug.Print , "varDebug IS missing so no parameter is passed to aeDocumentTheDatabase"
+        'Debug.Print , "DEBUGGING IS OFF"
+        VerifySetup
+    Else
+        Debug.Print , "varDebug IS NOT missing so a variant parameter is passed to aeDocumentTheDatabase"
+        Debug.Print , "DEBUGGING TURNED ON"
+        VerifySetup ''' "varDebug"
+    End If
+
+    Setup_The_Source_Location
+
+    ListOrCloseAllOpenQueries
+
+    DeleteAllExportedFiles
+
+    Debug.Print "aeDocumentTheDatabase", "aegitSetup = " & aegitSetup, "aegitFrontEndApp = " & aegitFrontEndApp
     'Stop
+
+    Debug.Print , "aegitExport.ExportAll = " & aegitExport.ExportAll
+    If aegitExport.ExportCodeAndObjects Then
+        Debug.Print , "aegitExport.ExportCodeAndObjects = " & aegitExport.ExportCodeAndObjects
+    End If
+    'OBSOLETE If aegitExport.ExportModuleCodeOnly Then
+    '    Debug.Print , "aegitExport.ExportModuleCodeOnly = " & aegitExport.ExportModuleCodeOnly
+    'End If
+    If aegitExport.ExportNoODBCTablesInfo Then
+        Debug.Print , "aegitExport.ExportNoODBCTablesInfo = " & aegitExport.ExportNoODBCTablesInfo
+    End If
+    If aegitExport.EXPERIMENTAL_ExportCBID Then
+        Debug.Print , "aegitExport.EXPERIMENTAL_ExportCBID = " & aegitExport.EXPERIMENTAL_ExportCBID
+    End If
+    If aegitExport.EXPERIMENTAL_ExportCreateDbScript Then
+        Debug.Print , "aegitExport.EXPERIMENTAL_ExportCreateDbScript = " & aegitExport.EXPERIMENTAL_ExportCreateDbScript
+    End If
+    If aegitExport.EXPERIMENTAL_ExportQAT Then
+        Debug.Print , "aegitExport.EXPERIMENTAL_ExportQAT = " & aegitExport.EXPERIMENTAL_ExportQAT
+    End If
+    'Stop
+
+    ' ===========================================
+    '    FORMS REPORTS SCRIPTS MODULES QUERIES
+    ' ===========================================
+    ' NOTE: Erl(0) Error 2950 if the ouput location does not exist so test for it first: Resolved in VerifySetup
+
+    If Not IsMissing(varDebug) Then
+        DocumentTheContainer "Forms", "frm", varDebug
+        DocumentTheContainer "Reports", "rpt", varDebug
+        DocumentTheContainer "Scripts", "mac", varDebug
+        DocumentTheContainer "Modules", "bas", varDebug
+        DocumentTheQueries varDebug
+    Else
+        aeBeginLogging "aeDocumentTheDatabase"
+        DocumentTheContainer "Forms", "frm"
+        aePrintLog "Timing for DocumentTheContainer Forms"
+        aeEndLogging "aeDocumentTheDatabase"
+
+        aeBeginLogging "aeDocumentTheDatabase"
+        DocumentTheContainer "Reports", "rpt"
+        aePrintLog "Timing for DocumentTheContainer Reports"
+        aeEndLogging "aeDocumentTheDatabase"
+
+        aeBeginLogging "aeDocumentTheDatabase"
+        DocumentTheContainer "Scripts", "mac"
+        aePrintLog "Timing for DocumentTheContainer Macros"
+        aeEndLogging "aeDocumentTheDatabase"
+
+        aeBeginLogging "aeDocumentTheDatabase"
+        DocumentTheContainer "Modules", "bas"
+        aePrintLog "Timing for DocumentTheContainer Modules"
+        aeEndLogging "aeDocumentTheDatabase"
+    
+        aeBeginLogging "aeDocumentTheDatabase"
+        DocumentTheQueries
+        aePrintLog "Timing for DocumentTheQueries"
+        aeEndLogging "aeDocumentTheDatabase"
+    End If
+
+    If Not IsMissing(varDebug) Then
+        aeGetReferences varDebug
+        aeDocumentTables varDebug
+        aeDocumentRelations varDebug
+        aeDocumentTablesXML varDebug
+    Else
+        aeGetReferences
+        aeDocumentTables
+        aeDocumentRelations
+        aeDocumentTablesXML
+    End If
+
+    OutputQueriesSqlText
+
+    If Not IsMissing(varDebug) Then
+        If aeExists("Tables", "USysRibbons", varDebug) Then
+            OutputTableDataAsFormattedText "USysRibbons", varDebug
+        End If
+    Else
+        If aeExists("Tables", "USysRibbons") Then
+            OutputTableDataAsFormattedText "USysRibbons"
+        End If
+    End If
+
+    ' If ExportAll is false then do not export anything beyond this point
+    If Not aegitExport.ExportAll Then
+        Exit Function
+    End If
 
     ' =============
     '    OUTPUTS
     ' =============
+    aeBeginLogging "aeDocumentTheDatabase Outputs"
     If Not IsMissing(varDebug) Then
         OutputListOfContainers aeAppListCnt, varDebug
         OutputListOfAccessApplicationOptions varDebug
-        If aegitExport.ExportCBID Then
-            OutputListOfCommandBarIDs strTheSourceLocation & aeAppCmbrIds, varDebug
-            SortTheFile strTheSourceLocation & aeAppCmbrIds, strTheSourceLocation & aeAppCmbrIds & ".sort"
-            KillProperly (strTheSourceLocation & aeAppCmbrIds)
+        If aegitExport.EXPERIMENTAL_ExportCBID Then
+            OutputListOfCommandBarIDs mstrTheSourceLocation & aeAppCmbrIds, varDebug
+            SortTheFile mstrTheSourceLocation & aeAppCmbrIds, mstrTheSourceLocation & aeAppCmbrIds & ".sort"
+            KillProperly (mstrTheSourceLocation & aeAppCmbrIds)
         End If
         If aegitExport.ExportNoODBCTablesInfo Then
             OutputListOfTables aegitExport.ExportNoODBCTablesInfo, varDebug
@@ -1151,9 +1221,6 @@ Private Function aeDocumentTheDatabase(Optional ByVal varDebug As Variant) As Bo
         If aeExists("Tables", "aetlkpStates", varDebug) Then
             OutputTableDataAsFormattedText "aetlkpStates", varDebug
         End If
-        If aeExists("Tables", "USysRibbons", varDebug) Then
-            OutputTableDataAsFormattedText "USysRibbons", varDebug
-        End If
         OutputCatalogUserCreatedObjects varDebug
         OutputListOfAllHiddenQueries varDebug
         OutputListOfForms varDebug
@@ -1163,20 +1230,16 @@ Private Function aeDocumentTheDatabase(Optional ByVal varDebug As Variant) As Bo
         OutputBuiltInPropertiesText varDebug
         OutputAllContainerProperties varDebug
         OutputTableProperties varDebug
-        aeGetReferences varDebug
-        aeDocumentTables varDebug
-        aeDocumentRelations varDebug
-        aeDocumentTablesXML varDebug
     Else
         OutputListOfContainers aeAppListCnt
         OutputListOfAccessApplicationOptions
-        If aegitExport.ExportCBID Then
-            OutputListOfCommandBarIDs strTheSourceLocation & aeAppCmbrIds
-            'Debug.Print , "strTheSourceLocation = " & strTheSourceLocation
+        If aegitExport.EXPERIMENTAL_ExportCBID Then
+            OutputListOfCommandBarIDs mstrTheSourceLocation & aeAppCmbrIds
+            'Debug.Print , "mstrTheSourceLocation = " & mstrTheSourceLocation
             'Debug.Print , "aeAppCmbrIds = " & aeAppCmbrIds
             'Stop
-            SortTheFile strTheSourceLocation & aeAppCmbrIds, strTheSourceLocation & aeAppCmbrIds & ".sort"
-            KillProperly (strTheSourceLocation & aeAppCmbrIds)
+            SortTheFile mstrTheSourceLocation & aeAppCmbrIds, mstrTheSourceLocation & aeAppCmbrIds & ".sort"
+            KillProperly (mstrTheSourceLocation & aeAppCmbrIds)
         End If
         If aegitExport.ExportNoODBCTablesInfo Then
             OutputListOfTables aegitExport.ExportNoODBCTablesInfo, varDebug
@@ -1188,9 +1251,6 @@ Private Function aeDocumentTheDatabase(Optional ByVal varDebug As Variant) As Bo
         If aeExists("Tables", "aetlkpStates") Then
             OutputTableDataAsFormattedText "aetlkpStates"
         End If
-        If aeExists("Tables", "USysRibbons") Then
-            OutputTableDataAsFormattedText "USysRibbons"
-        End If
         OutputCatalogUserCreatedObjects
         OutputListOfAllHiddenQueries
         OutputListOfForms
@@ -1200,26 +1260,23 @@ Private Function aeDocumentTheDatabase(Optional ByVal varDebug As Variant) As Bo
         OutputBuiltInPropertiesText
         OutputAllContainerProperties
         OutputTableProperties
-        aeGetReferences
-        aeDocumentTables
-        aeDocumentRelations
-        aeDocumentTablesXML
     End If
 
     OutputListOfApplicationProperties
-    OutputQueriesSqlText
     OutputFieldLookupControlTypeList
-    If aegitExport.ExportCreateDbScript Then
+    If aegitExport.EXPERIMENTAL_ExportCreateDbScript Then
         OutputTheSchemaFile
-        OutputTheSqlFile strTheSourceLocation & aeSchemaFile, strTheSourceLocation & aeSchemaFile & ".sql"
-        OutputTheSqlOnlyFile strTheSourceLocation & aeSchemaFile & ".sql", strTheSourceLocation & aeSchemaFile & ".sql" & ".only"
-        KillProperly (strTheSourceLocation & aeSchemaFile & ".sql")
-        GenerateLovefieldSchema strTheSourceLocation & aeSchemaFile & ".sql" & ".only", strTheSourceLocation & aeLoveSchema
+        OutputTheSqlFile mstrTheSourceLocation & aeSchemaFile, mstrTheSourceLocation & aeSchemaFile & ".SQL"
+        OutputTheSqlOnlyFile mstrTheSourceLocation & aeSchemaFile & ".SQL", mstrTheSourceLocation & aeSchemaFile & ".SQL" & ".only"
+        KillProperly (mstrTheSourceLocation & aeSchemaFile & ".SQL")
+        GenerateLovefieldSchema mstrTheSourceLocation & aeSchemaFile & ".SQL" & ".only", mstrTheSourceLocation & aeLoveSchema
     End If
-    OutputListOfIndexes strTheSourceLocation & aeIndexLists
+    OutputListOfIndexes mstrTheSourceLocation & aeIndexLists
+    aePrintLog "Timing for aeDocumentTheDatabase Outputs"
+    aeEndLogging "aeDocumentTheDatabase Outputs"
     'Stop
 
-    If aegitExport.ExportQAT Then
+    If aegitExport.EXPERIMENTAL_ExportQAT Then
         If Not IsMissing(varDebug) Then
             OutputTheQAT aeAppListQAT, varDebug
         Else
@@ -1230,10 +1287,8 @@ Private Function aeDocumentTheDatabase(Optional ByVal varDebug As Variant) As Bo
     aeDocumentTheDatabase = True
 
 PROC_EXIT:
-    Set qdf = Nothing
     Set doc = Nothing
     Set cnt = Nothing
-    'aeEndLogging "aeDocumentTheDatabase"
     Exit Function
 
 PROC_ERR:
@@ -1243,6 +1298,36 @@ PROC_ERR:
     Resume PROC_EXIT
 
 End Function
+
+Private Sub DeleteAllExportedFiles()
+
+    aeBeginLogging "DeleteAllExportedFiles"
+    If aegitSetup Then
+        'MsgBox "aestrSourceLocation = " & aestrSourceLocation
+        KillAllFiles aestrSourceLocation            '= aegitType.SourceFolder
+        'MsgBox "aestrXMLLocation = " & aestrXMLLocation
+        KillAllFiles aestrXMLLocation               '= aegitType.XMLFolder
+        'MsgBox "aestrXMLDataLocation = " & aestrXMLDataLocation
+        KillAllFiles aestrXMLDataLocation           '= aegitType.XMLDataFolder
+    ElseIf aegitFrontEndApp Then
+        'MsgBox "aestrSourceLocation = " & aestrSourceLocation
+        KillAllFiles aestrSourceLocation
+        'MsgBox "aestrXMLLocation = " & aestrXMLLocation
+        KillAllFiles aestrXMLLocation
+        'MsgBox "aestrXMLDataLocation = " & aestrXMLDataLocation
+        KillAllFiles aestrXMLDataLocation
+    ElseIf Not aegitFrontEndApp Then
+        'MsgBox "aestrSourceLocationBe = " & aestrSourceLocationBe
+        KillAllFiles aestrSourceLocationBe
+        'MsgBox "aestrXMLLocationBe = " & aestrXMLLocationBe
+        KillAllFiles aestrXMLLocationBe
+        'MsgBox "aestrXMLDataLocationBe = " & aestrXMLDataLocationBe
+        KillAllFiles aestrXMLDataLocationBe
+    End If
+    aePrintLog "Timing for DeleteAllExportedFiles"
+    aeEndLogging "DeleteAllExportedFiles"
+
+End Sub
 
 Private Sub aeEndLogging(ByVal strProcName As String, Optional ByVal varOne As Variant = vbNullString, _
     Optional ByVal varTwo As Variant = vbNullString, Optional ByVal varThree As Variant = vbNullString)
@@ -1477,7 +1562,8 @@ PROC_ERR:
 End Function
 
 Private Sub aePrintLog(Optional ByVal varOne As Variant = vbNullString, _
-    Optional ByVal varTwo As Variant = vbNullString, Optional ByVal varThree As Variant = vbNullString)
+    Optional ByVal varTwo As Variant = vbNullString, _
+    Optional ByVal varThree As Variant = vbNullString)
 
     On Error GoTo 0
     If aeLog.blnNoTrace Or aeLog.blnNoPrint Then
@@ -1672,7 +1758,9 @@ Private Function DescribeIndexField(tdf As DAO.TableDef, strField As String) As 
     DescribeIndexField = arrReturn()
 End Function
 
-Private Function DocumentTheContainer(ByVal strContainerType As String, ByVal strExt As String, Optional ByVal varDebug As Variant) As Boolean
+Private Function DocumentTheContainer(ByVal strContainerType As String, _
+    ByVal strExt As String, _
+    Optional ByVal varDebug As Variant) As Boolean
     ' strContainerType: Forms, Reports, Scripts (Macros), Modules
 
     On Error GoTo PROC_ERR
@@ -1684,7 +1772,7 @@ Private Function DocumentTheContainer(ByVal strContainerType As String, ByVal st
     Dim intAcObjType As Integer
     Dim strTheCurrentPathAndFile As String
 
-    Set dbs = CurrentDb() ' use CurrentDb() to refresh Collections
+    Set dbs = CurrentDb() ' Use CurrentDb() to refresh Collections
 
     If IsMissing(varDebug) Then
         'Debug.Print , "varDebug IS missing so no parameter is passed to DocumentTheContainer"
@@ -1694,14 +1782,7 @@ Private Function DocumentTheContainer(ByVal strContainerType As String, ByVal st
         Debug.Print , "DEBUGGING TURNED ON"
     End If
 
-    Dim strTheSourceLocation As String
-    If aegitSourceFolder = "default" Then
-        strTheSourceLocation = aegitType.SourceFolder
-    ElseIf aegitFrontEndApp Then
-        strTheSourceLocation = aestrSourceLocation
-    ElseIf Not aegitFrontEndApp Then
-        strTheSourceLocation = aestrSourceLocationBe
-    End If
+    Setup_The_Source_Location
 
     i = 0
     Set cnt = dbs.Containers(strContainerType)
@@ -1726,7 +1807,7 @@ Private Function DocumentTheContainer(ByVal strContainerType As String, ByVal st
         If Not IsMissing(varDebug) Then Debug.Print , doc.Name
         If Not (Left$(doc.Name, 3) = "zzz" Or Left$(doc.Name, 4) = "~TMP") Then
             i = i + 1
-            strTheCurrentPathAndFile = strTheSourceLocation & doc.Name & "." & strExt
+            strTheCurrentPathAndFile = mstrTheSourceLocation & doc.Name & "." & strExt
             'Debug.Print "DocumentTheContainer", "strTheCurrentPathAndFile = " & strTheCurrentPathAndFile
             'Stop
             If IsFileLocked(strTheCurrentPathAndFile) Then
@@ -1734,7 +1815,7 @@ Private Function DocumentTheContainer(ByVal strContainerType As String, ByVal st
             End If
             KillProperly (strTheCurrentPathAndFile)
 SaveAsText:
-            If intAcObjType = 5 Then
+            If intAcObjType = 5 Then    ' Modules
                 'Debug.Print "5:", doc.Name, Excluded(doc.Name)
                 If Excluded(doc.Name) And pExclude Then
                     Debug.Print , "=> Excluded: " & doc.Name
@@ -1745,18 +1826,19 @@ SaveAsText:
             Else
                 Application.SaveAsText intAcObjType, doc.Name, strTheCurrentPathAndFile
             End If
+
             If mblnUTF16 Then
                 Application.SaveAsText intAcObjType, doc.Name, strTheCurrentPathAndFile
             Else
                 Application.SaveAsText intAcObjType, doc.Name, strTheCurrentPathAndFile
-                If intAcObjType = 2 Then
+                If intAcObjType = 2 Or intAcObjType = 3 Then    ' Forms or Reports
                     ' Convert UTF-16 to txt - fix for Access 2013
                     If NoBOM(strTheCurrentPathAndFile) Then
                         ' Conversion done
                     Else
                         ' Fallback to old method
                         If aeReadWriteStream(strTheCurrentPathAndFile) = True Then
-                            'If intAcObjType = 2 Then Pause (0.25)
+                            'If intAcObjType = 2 Or intAcObjType = 3 Then Pause (0.25)
                             KillProperly (strTheCurrentPathAndFile)
                             Name strTheCurrentPathAndFile & ".clean.txt" As strTheCurrentPathAndFile
                         End If
@@ -1768,7 +1850,7 @@ SaveAsText:
         ' Ouput frm as txt
         If Not (Left$(doc.Name, 3) = "zzz" Or Left$(doc.Name, 4) = "~TMP") _
             Or Not Excluded(doc.Name) Then
-            If strContainerType = "Forms" Then
+            If strContainerType = "Forms" Or strContainerType = "Reports" Then
                 If Not IsMissing(varDebug) Then
                     CreateFormReportTextFile strTheCurrentPathAndFile, strTheCurrentPathAndFile & ".txt", varDebug
                 Else
@@ -1853,17 +1935,10 @@ Private Function FieldLookupControlTypeList(Optional ByVal varDebug As Variant) 
 
     Dim fle As Integer
 
-    Dim strTheSourceLocation As String
-    If aegitSourceFolder = "default" Then
-        strTheSourceLocation = aegitType.SourceFolder
-    ElseIf aegitFrontEndApp Then
-        strTheSourceLocation = aestrSourceLocation
-    ElseIf Not aegitFrontEndApp Then
-        strTheSourceLocation = aestrSourceLocationBe
-    End If
+    Setup_The_Source_Location
 
     fle = FreeFile()
-    Open strTheSourceLocation & "\" & aeFLkCtrFile For Output As #fle
+    Open mstrTheSourceLocation & "\" & aeFLkCtrFile For Output As #fle
 
     intChk = 0
     intTxt = 0
@@ -2042,7 +2117,7 @@ Private Function FileLocked(ByVal strFileName As String) As Boolean
     fle = FreeFile()
     On Error Resume Next
     ' If the file is already opened by another process,
-    ' and the specified type of access is not allowed,
+    ' and the specified Type of access is not allowed,
     ' the Open operation fails and an error occurs.
     Open strFileName For Binary Access Read Write Lock Read Write As #fle
     Close fle
@@ -2197,8 +2272,24 @@ End Sub
 
 Private Function GetDescription(ByVal obj As Object) As String
     'Debug.Print "GetDescription"
-    On Error Resume Next
-    GetDescription = obj.Properties("Description")
+    On Error GoTo PROC_ERR
+
+    GetDescription = Nz(obj.Properties("Description"), "No Description Property")
+
+PROC_EXIT:
+    Exit Function
+
+PROC_ERR:
+    Select Case Err
+        Case 3270
+            'Debug.Print "Err=" & Err.Number & " " & obj.Name & " (" & Err.Description & ") in procedure GetDescription of Class aegitClass"
+            'Stop
+            Resume PROC_EXIT
+        Case Else
+            MsgBox "Erl=" & Erl & " Err=" & Err.Number & " (" & Err.Description & ") in procedure GetIndex of Class aegitClass"
+            Resume PROC_EXIT
+    End Select
+
 End Function
 
 Public Function GetFieldInfo(ByVal strSchemaLine As String) As String
@@ -2576,7 +2667,7 @@ Private Function IsFileLocked(ByVal PathFileName As String) As Boolean
         Unlock i
         Close i
     Else
-        ' Err.Raise 53
+        'Err.Raise 53
     End If
 
 PROC_EXIT:
@@ -2615,9 +2706,9 @@ End Function
 
 Private Function IsLinkedODBC(strTableName As String) As Boolean
     ' Ref: http://www.pcreview.co.uk/threads/check-if-a-table-is-linked.3748757/
-    ' Non-linked tables are type 1
-    ' ODBC linked tables are type 4
-    ' All other linked tables are type 6
+    ' Non-linked tables are Type 1
+    ' ODBC linked tables are Type 4
+    ' All other linked tables are Type 6
 
     'Debug.Print strTableName, Nz(DLookup("Type", "MSysObjects", "Name = '" & strTableName & "'"))
     IsLinkedODBC = Nz(DLookup("Type", "MSysObjects", "Name = '" & strTableName & "'"), 0) = 4
@@ -2673,16 +2764,16 @@ PROC_ERR:
             'MsgBox "mblnIgnore = " & mblnIgnore
             If mblnIgnore Then Resume PROC_EXIT
             MsgBox "Err=" & Err.Number & " " & Err.Description, vbExclamation, "IsLinkedTable Error"
-            intAnswer = MsgBox("Ignore further errors of this type?", vbYesNo + vbQuestion, "IsLinkedTable Error")
+            intAnswer = MsgBox("Ignore further errors of this Type?", vbYesNo + vbQuestion, "IsLinkedTable Error")
             If intAnswer = vbYes Then
                 mblnIgnore = True
             Else
-                'do nothing
+                ' Do nothing
             End If
         Case 3265
             MsgBox "[" & strTableName & "] does not exist as either an Internal or Linked Table", _
                 vbCritical, "Table Missing"
-        Case 3011, 3024     'Linked Table does not exist or DB Path not valid
+        Case 3011, 3024     ' Linked Table does not exist or DB Path not valid
             MsgBox "[" & strTableName & "] is not a valid Linked Table", vbCritical, "Link Not Valid"
         Case Else
             MsgBox "Err=" & Err.Number & " " & Err.Description, vbExclamation, "IsLinkedTable Error"
@@ -2816,7 +2907,7 @@ Private Sub KillAllFiles(ByVal strLoc As String)
 
     Dim strFile As String
 
-    Debug.Print "KillAllFiles"
+    Debug.Print "KillAllFiles " & strLoc
     'Debug.Print , "strLoc = " & strLoc
     On Error GoTo PROC_ERR
 
@@ -2899,17 +2990,10 @@ Private Sub ListAllContainerProperties(ByVal strContainer As String, Optional By
     Set dbs = Application.CurrentDb
     Set obj = dbs.Containers(strContainer)
 
-    Dim strTheSourceLocation As String
-    If aegitSourceFolder = "default" Then
-        strTheSourceLocation = aegitType.SourceFolder
-    ElseIf aegitFrontEndApp Then
-        strTheSourceLocation = aestrSourceLocation
-    ElseIf Not aegitFrontEndApp Then
-        strTheSourceLocation = aestrSourceLocationBe
-    End If
+    Setup_The_Source_Location
 
     fle = FreeFile()
-    Open strTheSourceLocation & "\OutputContainer" & strContainer & "Properties.txt" For Output As #fle
+    Open mstrTheSourceLocation & "\OutputContainer" & strContainer & "Properties.txt" For Output As #fle
 
     ' Ref: http://stackoverflow.com/questions/16642362/how-to-get-the-following-code-to-continue-on-error
     For Each doc In obj.Documents
@@ -3041,7 +3125,6 @@ Private Function LongestFieldPropsName() As Boolean
     aeintFNLen = 0
     aeintFTLen = 0
     aeintFDLen = 0
-
 
     For Each tblDef In CurrentDb.TableDefs
         If Not (Left$(tblDef.Name, 4) = "MSys" _
@@ -3410,23 +3493,26 @@ Public Sub OutputCatalogUserCreatedObjects(Optional ByVal varDebug As Variant)
 
     Debug.Print "OutputCatalogUserCreatedObjects"
     On Error GoTo PROC_ERR
-    
+
     Dim strSQL As String
-    Const MY_QUERY_NAME As String = "zzzqryCatalogUserCreatedObjects"
-    
-    Dim strPathFileName As String
+    Dim fle As Integer
+    fle = FreeFile()
+
+    'Dim strPathFileName As String
     If aegitFrontEndApp Then
-        strPathFileName = aestrSourceLocation & aeCatalogObj
+        'strPathFileName = aestrSourceLocation & aeCatalogObj
+        Open aestrSourceLocation & aeCatalogObj For Output As #fle
     Else
-        strPathFileName = aestrSourceLocationBe & aeCatalogObj
+        'strPathFileName = aestrSourceLocationBe & aeCatalogObj
+        Open aestrSourceLocationBe & aeCatalogObj For Output As #fle
     End If
 
     If Not IsMissing(varDebug) Then
         Debug.Print "OutputCatalogUserCreatedObjects"
-        Debug.Print , strPathFileName
+        'Debug.Print , strPathFileName
     Else
     End If
-  
+
     ' Ref: https://support.office.com/en-za/article/FormatDateTime-Function-aef62949-f957-4ba4-94ff-ace14be4f1ca
     ' Format DateCreate as short date, vbShortDate = 2
     'SELECT IIf(type=1,"Table",IIf(type=6,"Linked Table",IIf(type=5,"Query",IIf(type=-32768,"Form",IIf(type=-32764,"Report",IIf(type=-32766,"Module",IIf(type=-32761,"Module","Unknown"))))))) AS [Object Type], MSysObjects.Name, FormatDateTime([DateCreate],2) AS DateCreated
@@ -3434,10 +3520,10 @@ Public Sub OutputCatalogUserCreatedObjects(Optional ByVal varDebug As Variant)
     'WHERE (((MSysObjects.[Type]) In (1,5,6,-32768,-32764,-32766,-32761)) AND ((Left$([Name],4))<>"MSys") AND ((Left$([Name],1))<>"~"))
     'ORDER BY IIf(type=1,"Table",IIf(type=6,"Linked Table",IIf(type=5,"Query",IIf(type=-32768,"Form",IIf(type=-32764,"Report",IIf(type=-32766,"Module",IIf(type=-32761,"Module","Unknown"))))))), MSysObjects.Name;
 
-    strSQL = "SELECT IIf(type = 1,""Table"", IIf(type = 6, ""Linked Table"", "
-    strSQL = strSQL & vbCrLf & "IIf(type = 5,""Query"", IIf(type = -32768,""Form"", "
-    strSQL = strSQL & vbCrLf & "IIf(type = -32764,""Report"", IIf(type=-32766,""Module"", "
-    strSQL = strSQL & vbCrLf & "IIf(type = -32761,""Module"", ""Unknown""))))))) as [Object Type], "
+    strSQL = "SELECT IIf(Type = 1,""Table"", IIf(Type = 6, ""Linked Table"", "
+    strSQL = strSQL & vbCrLf & "IIf(Type = 5,""Query"", IIf(Type = -32768,""Form"", "
+    strSQL = strSQL & vbCrLf & "IIf(Type = -32764,""Report"", IIf(type=-32766,""Module"", "
+    strSQL = strSQL & vbCrLf & "IIf(Type = -32761,""Module"", ""Unknown""))))))) as [Object Type], "
     strSQL = strSQL & vbCrLf & "MSysObjects.Name, ""DateCreated"" AS DateCreated "
     'strSQL = strSQL & vbCrLf & "MSysObjects.Name, FormatDateTime([DateCreate],2) AS DateCreated "
     strSQL = strSQL & vbCrLf & "FROM MSysObjects "
@@ -3447,34 +3533,31 @@ Public Sub OutputCatalogUserCreatedObjects(Optional ByVal varDebug As Variant)
 
     'Debug.Print strSQL
 
-    ' Using a query name and sql string, if the query does not exist, ...
-    If IsNull(DLookup("Name", "MsysObjects", "Name='" & MY_QUERY_NAME & "'")) Then
-        ' create it ...
-        CurrentDb.CreateQueryDef MY_QUERY_NAME, strSQL
-    Else
-        ' otherwise, update the sql
-        CurrentDb.QueryDefs(MY_QUERY_NAME).SQL = strSQL
-    End If
+    CurrentProject.Connection.Execute "GRANT SELECT ON MSysObjects TO Admin;"
 
-    'DoCmd.OpenQuery MY_QUERY_NAME
-e3167:
-    DoCmd.TransferText acExportDelim, , MY_QUERY_NAME, strPathFileName
-    ' Delete the query
-    On Error Resume Next
-    DoCmd.DeleteObject acQuery, MY_QUERY_NAME
-    Err.Clear
-    On Error GoTo PROC_ERR
+    Dim dbs As DAO.Database
+    Set dbs = CurrentDb
+    Dim rst As DAO.Recordset
+    Set rst = dbs.OpenRecordset(strSQL)
 
+    Do While Not rst.EOF
+        If Not IsMissing(varDebug) Then Debug.Print rst.Fields(0), rst.Fields(1)
+        Print #fle, """" & rst.Fields(0) & """" & "," & """" & rst.Fields(1) & """" & "," & """" & "DateCreated" & """"
+        rst.MoveNext
+    Loop
+    Close fle
+    'Stop
+    
 PROC_EXIT:
     Exit Sub
 
 PROC_ERR:
-    If Err = 3167 Then          ' Record is deleted
-        'MsgBox "Erl=" & Erl & " Error " & Err.Number & " (" & Err.Description & ") in procedure OutputCatalogUserCreatedObjects of Class aegit_expClass", vbCritical, "ERROR"
-        Resume e3167
-    Else
-        MsgBox "Erl=" & Erl & " Error " & Err.Number & " (" & Err.Description & ") in procedure OutputCatalogUserCreatedObjects of Class aegit_expClass", vbCritical, "ERROR"
-    End If
+    'If Err = 3167 Then          ' Record is deleted
+    '    'MsgBox "Erl=" & Erl & " Error " & Err.Number & " (" & Err.Description & ") in procedure OutputCatalogUserCreatedObjects of Class aegit_expClass", vbCritical, "ERROR"
+    '     Resume e3167
+    'Else
+    MsgBox "Erl=" & Erl & " Error " & Err.Number & " (" & Err.Description & ") in procedure OutputCatalogUserCreatedObjects of Class aegit_expClass", vbCritical, "ERROR"
+    'End If
     'Stop
     Resume PROC_EXIT
 
@@ -3528,17 +3611,10 @@ Private Sub OutputListOfAccessApplicationOptions(Optional ByVal varDebug As Vari
 
     If Not IsMissing(varDebug) Then Debug.Print "aegitSourceFolder=" & aegitSourceFolder
 
-    Dim strTheSourceLocation As String
-    If aegitSourceFolder = "default" Then
-        strTheSourceLocation = aegitType.SourceFolder
-    ElseIf aegitFrontEndApp Then
-        strTheSourceLocation = aestrSourceLocation
-    ElseIf Not aegitFrontEndApp Then
-        strTheSourceLocation = aestrSourceLocationBe
-    End If
+    Setup_The_Source_Location
 
     fle = FreeFile()
-    Open strTheSourceLocation & "\" & aeAppOptions For Output As #fle
+    Open mstrTheSourceLocation & "\" & aeAppOptions For Output As #fle
 
     Print #fle, ">>>Standard Options"
     ' 2000 The following options are equivalent to the standard startup options found in the Startup Options dialog box.
@@ -3623,7 +3699,7 @@ Private Sub OutputListOfAccessApplicationOptions(Optional ByVal varDebug As Vari
     Print #fle, ">>>Tables/Queries Tab"
     Print #fle, , "XP, 2003", "Default Text Field Size             ", Application.GetOption("Default Text Field Size")              ' Table design, Default field sizes - Text
     Print #fle, , "XP, 2003", "Default Number Field Size           ", Application.GetOption("Default Number Field Size")            ' Table design, Default field sizes - Number
-    Print #fle, , "XP, 2003", "Default Field Type                  ", Application.GetOption("Default Field Type")                   ' Table design, Default field type
+    Print #fle, , "XP, 2003", "Default Field Type                  ", Application.GetOption("Default Field Type")                   ' Table design, Default field Type
     Print #fle, , "XP, 2003", "AutoIndex on Import/Create          ", Application.GetOption("AutoIndex on Import/Create")           ' Table design, AutoIndex on Import/Create
     Print #fle, , "XP, 2003", "Show Table Names                    ", Application.GetOption("Show Table Names")                     ' Query design, Show table names
     Print #fle, , "XP, 2003", "Output All Fields                   ", Application.GetOption("Output All Fields")                    ' Query design, Output all fields
@@ -3735,7 +3811,7 @@ Private Sub OutputListOfAccessApplicationOptions(Optional ByVal varDebug As Vari
     Print #fle, "   >>>Table design section"
     Print #fle, , "2007, 2010, 2013", "Default Text Field Size             ", Application.GetOption("Default Text Field Size")              ' Default text field size
     Print #fle, , "2007, 2010, 2013", "Default Number Field Size           ", Application.GetOption("Default Number Field Size")            ' Default number field size
-    Print #fle, , "2007, 2010, 2013", "Default Field Type                  ", Application.GetOption("Default Field Type")                   ' Default field type
+    Print #fle, , "2007, 2010, 2013", "Default Field Type                  ", Application.GetOption("Default Field Type")                   ' Default field Type
     Print #fle, , "2007, 2010, 2013", "AutoIndex on Import/Create          ", Application.GetOption("AutoIndex on Import/Create")           ' AutoIndex on Import/Create
     Print #fle, , "2007, 2010, 2013", "Show Property Update Options Buttons", Application.GetOption("Show Property Update Options Buttons") ' Show Property Update Option Buttons
     Print #fle, "   >>>Query design section"
@@ -3935,17 +4011,10 @@ Private Sub OutputListOfApplicationProperties()
     Dim fle As Integer
     Dim strError As String
 
-    Dim strTheSourceLocation As String
-    If aegitSourceFolder = "default" Then
-        strTheSourceLocation = aegitType.SourceFolder
-    ElseIf aegitFrontEndApp Then
-        strTheSourceLocation = aestrSourceLocation
-    ElseIf Not aegitFrontEndApp Then
-        strTheSourceLocation = aestrSourceLocationBe
-    End If
+    Setup_The_Source_Location
 
     fle = FreeFile()
-    Open strTheSourceLocation & "\" & aeAppListPrp For Output As #fle
+    Open mstrTheSourceLocation & "\" & aeAppListPrp For Output As #fle
 
     Dim i As Integer
     Dim strPropName As String
@@ -3987,39 +4056,43 @@ PROC_ERR:
 End Sub
 
 Private Sub OutputListOfCommandBarIDs(ByVal strOutputFile As String, Optional ByVal varDebug As Variant)
-    ' Programming Office Commandbars - get the ID of a CommandBarControl
-    ' Ref: http://blogs.msdn.com/b/guowu/archive/2004/09/06/225963.aspx
-    ' Ref: http://www.vbforums.com/showthread.php?392954-How-do-I-Find-control-IDs-in-Visual-Basic-for-Applications-for-office-2003
-
-    Debug.Print "OutputListOfCommandBarIDs"
-    'Debug.Print , "strOutputFile = " & strOutputFile
-    On Error GoTo PROC_ERR
-
-    Dim CBR As Object       ' CommandBar
-    Set CBR = Application.CommandBars
-    Dim CBTN As Object      ' CommandBarButton
-    Set CBTN = Application.CommandBars.FindControls
-    Dim fle As Integer
-
-    fle = FreeFile()
-    Open strOutputFile For Output As #fle
-
-    On Error Resume Next
-
-    For Each CBR In Application.CommandBars
-        For Each CBTN In CBR.Controls
-            If Not IsMissing(varDebug) Then Debug.Print CBR.Name & ": " & CBTN.Id & " - " & CBTN.Caption
-            Print #fle, CBR.Name & ": " & CBTN.Id & " - " & CBTN.Caption
-        Next
-    Next
-
-PROC_EXIT:
-    Close fle
-    Exit Sub
-
-PROC_ERR:
-    MsgBox "Erl=" & Erl & " Error " & Err.Number & " (" & Err.Description & ") in procedure OutputListOfCommandBarIDs of Class aegit_expClass", vbCritical, "ERROR"
-    Resume PROC_EXIT
+'    ' Programming Office Commandbars - get the ID of a CommandBarControl
+'    ' Ref: http://blogs.msdn.com/b/guowu/archive/2004/09/06/225963.aspx
+'    ' Ref: http://www.vbforums.com/showthread.php?392954-How-do-I-Find-control-IDs-in-Visual-Basic-for-Applications-for-office-2003
+'
+'    Debug.Print "OutputListOfCommandBarIDs"
+'    'Debug.Print , "strOutputFile = " & strOutputFile
+'    On Error GoTo PROC_ERR
+'
+'    Dim CBR As Object       ' CommandBar
+'    Set CBR = Application.CommandBars
+'    Dim CBTN As Object      ' CommandBarButton
+'    Set CBTN = Application.CommandBars.FindControls
+'    Dim fle As Integer
+'    Dim CbtnLCid As Long
+'
+'    fle = FreeFile()
+'    Open strOutputFile For Output As #fle
+'
+'    On Error Resume Next
+'
+'    For Each CBR In Application.CommandBars
+'        For Each CBTN In CBR.Controls
+'            If Not IsMissing(varDebug) Then
+'                CbtnLCid = CBTN.ID
+'                Debug.Print CBR.Name & ": " & CbtnLCid & " - " & CBTN.Caption
+'            End If
+'            Print #fle, CBR.Name & ": " & CbtnLCid & " - " & CBTN.Caption
+'        Next
+'    Next
+'
+'PROC_EXIT:
+'    Close fle
+'    Exit Sub
+'
+'PROC_ERR:
+'    MsgBox "Erl=" & Erl & " Error " & Err.Number & " (" & Err.Description & ") in procedure OutputListOfCommandBarIDs of Class aegit_expClass", vbCritical, "ERROR"
+'    Resume PROC_EXIT
 
 End Sub
 
@@ -4529,7 +4602,7 @@ Public Sub OutputMyUnicode(ByRef strPathFileName As String, _
         Debug.Print "aestrSourceLocation=" & aestrSourceLocation
         mystrPathFileName = aestrSourceLocation & "TEST_OutputListOfCommandBarIDs.txt"
         .SaveToFile mystrPathFileName, 2            ' adSaveCreateOverWrite
-        '.SaveToFile "C:\TEMP\TestItFile.txt", 2            ' adSaveCreateOverWrite
+        '.SaveToFile "C:\TEMP\TestItFile.txt", 2    ' adSaveCreateOverWrite
         .Close
     End With
     'Stop
@@ -4559,17 +4632,10 @@ Public Sub OutputPrinterInfo(Optional ByVal varDebug As Variant)
 
     If Not mblnOutputPrinterInfo Then Exit Sub
 
-    Dim strTheSourceLocation As String
-    If aegitSourceFolder = "default" Then
-        strTheSourceLocation = aegitType.SourceFolder
-    ElseIf aegitFrontEndApp Then
-        strTheSourceLocation = aestrSourceLocation
-    ElseIf Not aegitFrontEndApp Then
-        strTheSourceLocation = aestrSourceLocationBe
-    End If
+    Setup_The_Source_Location
 
     fle = FreeFile()
-    Open strTheSourceLocation & "\" & aePrnterInfo For Output As #fle
+    Open mstrTheSourceLocation & "\" & aePrnterInfo For Output As #fle
 
     If Not IsMissing(varDebug) Then Debug.Print "Default Printer=" & Application.Printer.DeviceName
     Print #fle, "Default Printer=" & Application.Printer.DeviceName
@@ -4650,11 +4716,11 @@ PROC_ERR:
 End Sub
 
 Private Function OutputQueriesSqlText() As Boolean
-    ' Ref: http://www.pcreview.co.uk/forums/export-sql-saved-query-into-text-file-t2775525.html
+    ' Ref: http://www.pcreview.co.uk/forums/export-SQL-saved-query-into-text-file-t2775525.html
     ' ====================================================================
     ' Author:   Peter F. Ennis
     ' Date:     December 3, 2012
-    ' Comment:  Output the sql code of all queries to a text file
+    ' Comment:  Output the SQL code of all queries to a text file
     ' Updated:  All notes moved to change log
     ' History:  See comment details, basChangeLog, commit messages on github
     ' ====================================================================
@@ -4830,6 +4896,9 @@ End Sub
 Private Sub OutputTableProperties(Optional ByVal varDebug As Variant)
     ' Ref: http://bytes.com/topic/access/answers/709190-how-export-table-structure-including-description
 
+    Debug.Print "OutputTableProperties"
+    On Error GoTo PROC_ERR
+
     Dim tdf As DAO.TableDef
     Dim prp As DAO.Property
     Dim fldprp As DAO.Property
@@ -4847,14 +4916,7 @@ Private Sub OutputTableProperties(Optional ByVal varDebug As Variant)
 
     If Not IsMissing(varDebug) Then Debug.Print "aegitSourceFolder=" & aegitSourceFolder
 
-    Dim strTheSourceLocation As String
-    If aegitSourceFolder = "default" Then
-        strTheSourceLocation = aegitType.SourceFolder
-    ElseIf aegitFrontEndApp Then
-        strTheSourceLocation = aestrSourceLocation
-    ElseIf Not aegitFrontEndApp Then
-        strTheSourceLocation = aestrSourceLocationBe
-    End If
+    Setup_The_Source_Location
 
     For Each tdf In CurrentDb.TableDefs
 
@@ -4862,7 +4924,7 @@ Private Sub OutputTableProperties(Optional ByVal varDebug As Variant)
             Or Left$(tdf.Name, 4) = "~TMP" _
             Or Left$(tdf.Name, 3) = "zzz") Then
 
-            Open strTheSourceLocation & "Properties_" & tdf.Name & ".txt" For Output As #1
+            Open mstrTheSourceLocation & "Properties_" & tdf.Name & ".txt" For Output As #1
 
             On Error Resume Next
             For Each prp In tdf.Properties
@@ -4894,6 +4956,15 @@ Private Sub OutputTableProperties(Optional ByVal varDebug As Variant)
         End If
 NextTdf:
     Next tdf
+    
+PROC_EXIT:
+    Set tdf = Nothing
+    Exit Sub
+
+PROC_ERR:
+    MsgBox "Erl=" & Erl & " Error " & Err.Number & " (" & Err.Description & ") in procedure OutputTableProperties of Class aegit_expClass", vbCritical, "ERROR"
+    Resume PROC_EXIT
+
 End Sub
 
 Private Sub OutputTheQAT(ByVal strTheFile As String, Optional ByVal varDebug As Variant)
@@ -4918,15 +4989,7 @@ Private Sub OutputTheQAT(ByVal strTheFile As String, Optional ByVal varDebug As 
 
     ' FIXME - NOTE: Flaky and unreliable SendKeys... needs some work
 
-    Dim strTheSourceLocation As String
-    If aegitSourceFolder = "default" Then
-        strTheSourceLocation = aegitType.SourceFolder
-    ElseIf aegitFrontEndApp Then
-        strTheSourceLocation = aestrSourceLocation
-    ElseIf Not aegitFrontEndApp Then
-        strTheSourceLocation = aestrSourceLocationBe
-    End If
-
+    Setup_The_Source_Location
 
     apiSetActiveWindow lngHwnd
     ' Ref: http://www.jpsoftwaretech.com/vba/shell-scripting-vba-windows-script-host-object-model/
@@ -4943,7 +5006,7 @@ Private Sub OutputTheQAT(ByVal strTheFile As String, Optional ByVal varDebug As 
     Delay 250
     wsc.SendKeys "{BACKSPACE}"
     Delay 500
-    wsc.SendKeys strTheSourceLocation & strTheFile
+    wsc.SendKeys mstrTheSourceLocation & strTheFile
     Delay 250
     wsc.SendKeys "%S"
     wsc.SendKeys "{ESC}"
@@ -4953,13 +5016,13 @@ Private Sub OutputTheQAT(ByVal strTheFile As String, Optional ByVal varDebug As 
     ' and it messes parsing as standard XML. Remove it, rename the file as .xml,
     ' save to the xml folder and prettify for reading.
 
-    FixHeaderXML (strTheSourceLocation & strTheFile & ".exportedUI")
+    FixHeaderXML (mstrTheSourceLocation & strTheFile & ".exportedUI")
     'Stop
 
     If Not IsMissing(varDebug) Then
-        PrettyXML strTheSourceLocation & strTheFile & ".exportedUI.fixed.xml", varDebug
+        PrettyXML mstrTheSourceLocation & strTheFile & ".exportedUI.fixed.xml", varDebug
     Else
-        PrettyXML strTheSourceLocation & strTheFile & ".exportedUI.fixed.xml"
+        PrettyXML mstrTheSourceLocation & strTheFile & ".exportedUI.fixed.xml"
     End If
 
 PROC_EXIT:
@@ -5047,9 +5110,9 @@ Private Sub OutputTheSchemaFile(Optional ByVal varDebug As Variant) ' CreateDbSc
                 Select Case fld.Type
                     Case dbText
                         ' No look-up fields
-                        strFlds = strFlds & "Text (" & fld.Size & ")"
+                        strFlds = strFlds & "Text (" & fld.size & ")"
                     Case 109&                                   ' dbComplexText
-                        strFlds = strFlds & "Text (" & fld.Size & ")"
+                        strFlds = strFlds & "Text (" & fld.size & ")"
                     Case dbMemo, dbByte, 102&, dbInteger, 103&, _
                         104&, dbSingle, 105&, dbDouble, 106&, dbGUID, _
                         107&, dbDecimal, 108&, dbCurrency, _
@@ -5405,8 +5468,8 @@ Public Sub ReadInputWriteOutputLovefieldSchema(ByVal strFileIn As String, ByVal 
     ' lf.Type.BOOLEAN, false, No, JavaScript boolean object
     ' lf.Type.DATE_TIME, Date(0), No, JavaScript Date - will be converted to timestamp integer internally
     ' lf.Type.INTEGER, 0, No, 32-bit integer
-    ' lf.Type.NUMBER, 0, No, JavaScript number type
-    ' lf.Type.String, '', No, JavaScript string type
+    ' lf.Type.NUMBER, 0, No, JavaScript number Type
+    ' lf.Type.String, '', No, JavaScript string Type
     ' lf.Type.OBJECT, null, Yes, JavaScript Object - stored as-is
 
     'Debug.Print "ReadInputWriteOutputLovefieldSchema"
@@ -5716,8 +5779,8 @@ Private Function SizeString(ByVal Text As String, ByVal Length As Long, _
     Dim sPadChar As String
 
     If Len(Text) >= Length Then
-        ' if the source string is longer than the specified length, return the
-        ' Length left characters
+        ' If the source string is longer than the specified length, return the
+        ' left Length characters
         SizeString = Left$(Text, Length)
         Exit Function
     End If
@@ -5726,20 +5789,20 @@ Private Function SizeString(ByVal Text As String, ByVal Length As Long, _
         ' PadChar is an empty string. use a space.
         sPadChar = " "
     Else
-        ' use only the first character of PadChar
+        ' Use only the first character of PadChar
         sPadChar = Left$(PadChar, 1)
     End If
 
     If (TextSide <> TextLeft) And (TextSide <> TextRight) Then
-        ' if TextSide was neither TextLeft nor TextRight, use TextLeft.
+        ' If TextSide was neither TextLeft nor TextRight, use TextLeft.
         TextSide = TextLeft
     End If
 
     If TextSide = TextLeft Then
-        ' if the text goes on the left, fill out the right with spaces
+        ' If the text goes on the left, fill out the right with spaces
         SizeString = Text & String$(Length - Len(Text), sPadChar)
     Else
-        ' otherwise fill on the left and put the Text on the right
+        ' Otherwise fill on the left and put the Text on the right
         SizeString = String$(Length - Len(Text), sPadChar) & Text
     End If
 
@@ -5871,12 +5934,12 @@ Private Function TableInfo(ByVal strTableName As String, Optional ByVal varDebug
                 'If Not IsMissing(varDebug) And aeintFDLen <> 11 Then
                 Debug.Print SizeString(fld.Name, aeintFNLen, TextLeft, " ") _
                     & aestr4 & SizeString(FieldTypeName(fld), aeintFTLen, TextLeft, " ") _
-                    & aestr4 & SizeString(fld.Size, aeintFSize, TextLeft, " ") _
+                    & aestr4 & SizeString(fld.size, aeintFSize, TextLeft, " ") _
                     & aestr4 & SizeString(GetDescription(fld), aeintFDLen, TextLeft, " ")
             End If
             Print #1, SizeString(fld.Name, aeintFNLen, TextLeft, " ") _
                 & aestr4 & SizeString(FieldTypeName(fld), aeintFTLen, TextLeft, " ") _
-                & aestr4 & SizeString(fld.Size, aeintFSize, TextLeft, " ") _
+                & aestr4 & SizeString(fld.size, aeintFSize, TextLeft, " ") _
                 & aestr4 & SizeString(GetDescription(fld), aeintFDLen, TextLeft, " ")
         Next
     Else
@@ -5888,12 +5951,12 @@ Private Function TableInfo(ByVal strTableName As String, Optional ByVal varDebug
                     'If Not IsMissing(varDebug) And aeintFDLen <> 11 Then
                     Debug.Print SizeString(fld.Name, aeintFNLen, TextLeft, " ") _
                         & aestr4 & SizeString(FieldTypeName(fld), aeintFTLen, TextLeft, " ") _
-                        & aestr4 & SizeString(fld.Size, aeintFSize, TextLeft, " ") _
+                        & aestr4 & SizeString(fld.size, aeintFSize, TextLeft, " ") _
                         & aestr4 & SizeString(GetDescription(fld), aeintFDLen, TextLeft, " ")
                 End If
                 Print #1, SizeString(fld.Name, aeintFNLen, TextLeft, " ") _
                     & aestr4 & SizeString(FieldTypeName(fld), aeintFTLen, TextLeft, " ") _
-                    & aestr4 & SizeString(fld.Size, aeintFSize, TextLeft, " ") _
+                    & aestr4 & SizeString(fld.size, aeintFSize, TextLeft, " ") _
                     & aestr4 & SizeString(GetDescription(fld), aeintFDLen, TextLeft, " ")
             Next
         End If
@@ -5929,43 +5992,43 @@ Private Sub TestForRelativePath()
         strTestPath = CurrentProject.Path & Mid$(aestrSourceLocation, 2, Len(aestrSourceLocation) - 1)
         aestrSourceLocation = strTestPath
     End If
-    'Debug.Print , "aestrSourceLocation = " & aestrSourceLocation
+    Debug.Print , "aestrSourceLocation = " & aestrSourceLocation
     '
     strTestPath = aestrSourceLocationBe
     If Left$(aestrSourceLocationBe, 1) = "." Then
         strTestPath = CurrentProject.Path & Mid$(aestrSourceLocationBe, 2, Len(aestrSourceLocationBe) - 1)
         aestrSourceLocationBe = strTestPath
     End If
-    'Debug.Print , "aestrSourceLocationBe = " & aestrSourceLocationBe
+    Debug.Print , "aestrSourceLocationBe = " & aestrSourceLocationBe
     '
     strTestPath = aestrXMLLocation
     If Left$(aestrXMLLocation, 1) = "." Then
         strTestPath = CurrentProject.Path & Mid$(aestrXMLLocation, 2, Len(aestrXMLLocation) - 1)
         aestrXMLLocation = strTestPath
     End If
-    'Debug.Print , "aestrXMLLocation = " & aestrXMLLocation
+    Debug.Print , "aestrXMLLocation = " & aestrXMLLocation
     '
     strTestPath = aestrXMLLocationBe
     If Left$(aestrXMLLocationBe, 1) = "." Then
         strTestPath = CurrentProject.Path & Mid$(aestrXMLLocationBe, 2, Len(aestrXMLLocationBe) - 1)
         aestrXMLLocationBe = strTestPath
     End If
-    'Debug.Print , "aestrXMLLocationBe = " & aestrXMLLocationBe
+    Debug.Print , "aestrXMLLocationBe = " & aestrXMLLocationBe
     '
     strTestPath = aestrXMLDataLocation
     If Left$(aestrXMLDataLocation, 1) = "." Then
         strTestPath = CurrentProject.Path & Mid$(aestrXMLDataLocation, 2, Len(aestrXMLDataLocation) - 1)
         aestrXMLDataLocation = strTestPath
     End If
-    'Debug.Print , "aestrXMLDataLocation = " & aestrXMLDataLocation
+    Debug.Print , "aestrXMLDataLocation = " & aestrXMLDataLocation
     '
     strTestPath = aestrXMLDataLocationBe
-    If Left$(aestrXMLDataLocation, 1) = "." Then
+    If Left$(aestrXMLDataLocationBe, 1) = "." Then
         strTestPath = CurrentProject.Path & Mid$(aestrXMLDataLocationBe, 2, Len(aestrXMLDataLocationBe) - 1)
         aestrXMLDataLocationBe = strTestPath
     End If
-    'Debug.Print , "aestrXMLDataLocationBe = " & aestrXMLDataLocationBe
-    'Debug.Print , "--------------------------------------------------"
+    Debug.Print , "aestrXMLDataLocationBe = " & aestrXMLDataLocationBe
+    Debug.Print , "--------------------------------------------------"
 
 End Sub
 
@@ -6039,24 +6102,27 @@ Private Sub VerifySetup()   '(Optional ByVal varDebug As Variant)
         aestrSourceLocationBe = aegitSourceFolderBe
         aestrXMLLocationBe = aegitXMLFolderBe
         aestrXMLDataLocationBe = aegitXMLDataFolderBe
-        'Debug.Print , "aestrSourceLocationBe = " & aestrSourceLocationBe
-        'Debug.Print , "aestrXMLLocationBe = " & aestrXMLLocationBe
-        'Debug.Print , "aestrXMLDataLocationBe = " & aestrXMLDataLocationBe
-        'Debug.Print , "--------------------------------------------------"
+        Debug.Print , "BE1: aestrSourceLocationBe = " & aestrSourceLocationBe
+        Debug.Print , "BE2: aestrXMLLocationBe = " & aestrXMLLocationBe
+        Debug.Print , "BE3: aestrXMLDataLocationBe = " & aestrXMLDataLocationBe
+        Debug.Print , "--------------------------------------------------"
 
         TestForRelativePath
 
         ' Check folders exist
         If Not FolderExists(aestrSourceLocationBe) Then
-            MsgBox "aestrSourceLocationBe does not exist!", vbCritical, "VerifySetup"
+            MsgBox "aestrSourceLocationBe does not exist!" & vbCrLf & _
+                "aestrSourceLocationBe = " & aestrSourceLocationBe, vbCritical, "VerifySetup"
             Stop
         End If
         If Not FolderExists(aestrXMLLocationBe) Then
-            MsgBox "aestrXMLLocationBe does not exist!", vbCritical, "VerifySetup"
+            MsgBox "aestrXMLLocationBe does not exist!" & vbCrLf & _
+                "aestrXMLLocationBe = " & aestrXMLLocationBe, vbCritical, "VerifySetup"
             Stop
         End If
         If Not FolderExists(aestrXMLDataLocationBe) Then
-            MsgBox "aestrXMLDataLocationBe does not exist!", vbCritical, "VerifySetup"
+            MsgBox "aestrXMLDataLocationBe does not exist!" & vbCrLf & _
+                "aestrXMLDataLocationBe = " & aestrXMLDataLocationBe, vbCritical, "VerifySetup"
             Stop
         End If
     End If
