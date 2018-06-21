@@ -16,6 +16,7 @@
 "Module","aelan","DateCreated"
 "Module","aever","DateCreated"
 "Module","aexl","DateCreated"
+"Module","aezdbClass","DateCreated"
 "Module","bas_HiddenDummy","DateCreated"
 "Module","basaeRibbonCallbacks","DateCreated"
 "Module","basExportImport","DateCreated"
